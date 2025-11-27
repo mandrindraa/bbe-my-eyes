@@ -3,7 +3,7 @@ import { config } from "dotenv";
 import express, { json, urlencoded } from "express";
 import http from "node:http";
 import db from "./database/index.js";
-import { queryLatestData } from "./database/queries.js";
+import { queryPairedData } from "./database/queries.js";
 import client from "./mqtt/client.js";
 import wsServer from "./ws/socketIOServer.js";
 
@@ -46,9 +46,11 @@ app.post("/api/v1/locations", async (req, res) => {
       [long, lat, addr.formattedAddress, timestamp]
     );
 
-    const latestData = await queryLatestData();
-
-    wsServer.broadcastLocationUpdate(latestData);
+    wsServer.broadcastLocationUpdate({
+      longitude: long,
+      latitude: lat,
+      adresse: addr,
+    });
 
     res.status(201).json({
       success: true,
@@ -69,7 +71,8 @@ app.get("/api/v1/data", async (req, res) => {
   try {
     const timestamp = Date.now();
     console.log(timestamp);
-    const rows = await queryLatestData();
+    const rows = await queryPairedData();
+    console.log(rows);
 
     res.json(rows);
   } catch (error) {
