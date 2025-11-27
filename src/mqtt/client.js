@@ -99,7 +99,7 @@ class MQTTClient {
       }
 
       const [result] = await db.query(
-        "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE longitude = ?, latitude = ?, adresse = ?",
+        "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES ($1, $2, $3, $4) ON DUPLICATE KEY UPDATE longitude = $1 latitude = $2, adresse = $3",
         [longitude, latitude, adresse, timestamp, longitude, latitude, adresse]
       );
 
@@ -121,7 +121,7 @@ class MQTTClient {
       }
 
       const [result] = await db.query(
-        "INSERT INTO sensors (step, calories, velocity, timestamp, temperature) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE step = ?, calories = ?, velocity = ?, temperature = ?",
+        "INSERT INTO sensors (step, calories, velocity, timestamp, temperature) VALUES ($1, $2, $3, $4, $5) ON DUPLICATE KEY UPDATE step = $1, calories = $2, velocity = $3, temperature = $4",
         [
           step,
           calories,

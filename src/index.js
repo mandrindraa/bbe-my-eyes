@@ -209,7 +209,7 @@ app.post("/api/v1/speech", async (req, res) => {
 
     await db.query("INSERT INTO messages (text_content) VALUES ($1)", [text]);
 
-    const clientCount = wsServer.broadcastTextMessage(text, metadata || {});
+    const clientCount = wsServer.broadcast(text);
 
     res.json({
       success: true,
