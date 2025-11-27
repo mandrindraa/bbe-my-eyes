@@ -175,14 +175,6 @@ app.get("/api/v1/data", async (req, res) => {
             WHERE l.timestamp >= $1`,
       [timestamp]
     );
-    console.log(rows.rows);
-
-    if (rows.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Data not found",
-      });
-    }
 
     res.json({
       ...rows.rows,
