@@ -33,6 +33,13 @@ CREATE TABLE sensors (
         ON UPDATE CASCADE
 );
 
+CREATE TABLE messages (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_read BOOLEAN DEFAULT false
+    text TEXT
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_locations_id ON locations(id);
 CREATE INDEX idx_locations_timestamp ON locations(timestamp);
@@ -42,6 +49,8 @@ CREATE INDEX idx_sensors_id ON sensors(id);
 CREATE INDEX idx_sensors_location_id ON sensors(location_id);
 CREATE INDEX idx_sensors_timestamp ON sensors(timestamp);
 CREATE INDEX idx_sensors_created_at ON sensors(created_at DESC);
+
+CREATE INDEX idx_message_id ON messages(id);
 
 -- Display tables
 \dt
