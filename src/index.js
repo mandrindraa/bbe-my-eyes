@@ -1,0 +1,218 @@
+import cors from "cors";
+import { config } from "dotenv";
+import express from "express";
+import http from "node:http";
+import db from "./database/index.js";
+import client from "./mqtt/client.js";
+import wsServer from "./ws/ws.js";
+
+config();
+
+const app = express();
+// const privateKey = fs.readFileSync(process.env.SSL_KEY_PATH, "utf8");
+// const certificate = fs.readFileSync(process.env.SSL_CERT_PATH, "utf8");
+// const credentials = { key: privateKey, cert: certificate };
+
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cors());
+
+const server = http.createServer(app);
+
+// const server = https.createServer(app);
+const PORT = process.env.PORT || 3000;
+
+// start the mqtt client
+// client.connect();
+
+// init the ws server for real time communication
+
+wsServer.init(server);
+wsServer.handleConnection();
+wsServer.startHeartbeat();
+
+// Test route
+app.get("/", (req, res) => {
+  res.json({
+    message: "Welcome to Be My Eyes API",
+    mqtt_status: client.isConnected ? "connected" : "disconnected",
+    websocket_clients: wsServer.getClientCount(),
+  });
+});
+
+// Get all locations
+// app.get("/api/v1/locations", async (req, res) => {
+//   try {
+//     const [rows] = await db.query("SELECT * FROM locations");
+//     res.json({
+//       success: true,
+//       data: rows,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
+
+// Get location by timestamp
+// app.get("/api/locations", async (req, res) => {
+//   try {
+//     const [rows] = await db.query(
+//       "SELECT * FROM locations WHERE timestamp = ?",
+//       [req.params.timestamp]
+//     );
+
+//     if (rows.length === 0) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Location not found",
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: rows[0],
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
+
+// Create new location
+app.post("/api/v1/locations", async (req, res) => {
+  try {
+    const { longitude, latitude, adresse } = req.body;
+    const timestamp = Date.now();
+    wsServer.broadcast(
+      JSON.stringify([{ longitude, latitude, adresse, timestamp }])
+    );
+
+    const [result] = await db.query(
+      "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES (?, ?, ?, ?)",
+      [longitude, latitude, adresse, timestamp]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Location created successfully",
+      data: { timestamp },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Get all sensors
+// app.get("/api/sensors", async (req, res) => {
+//   try {
+//     const [rows] = await db.query("SELECT * FROM sensors");
+//     res.json({
+//       success: true,
+//       data: rows,
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
+
+// Create new sensor data
+// app.post("/api/sensors", async (req, res) => {
+//   try {
+//     const { step, calories, velocity, timestamp, temperature } = req.body;
+
+//     const [result] = await db.query(
+//       "INSERT INTO sensors (step, calories, velocity, timestamp, temperature) VALUES (?, ?, ?, ?, ?)",
+//       [step, calories, velocity, timestamp, temperature]
+//     );
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Sensor data created successfully",
+//       data: { timestamp },
+//     });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
+
+// Get location with sensor data (JOIN)
+app.get("/api/v1/data", async (req, res) => {
+  try {
+    const timestamp = Date.now() - 1000000;
+    const [rows] = await db.query(
+      `SELECT 
+                l.longitude, l.latitude, l.adresse, l.timestamp,
+                s.step, s.calories, s.velocity, s.temperature
+            FROM locations l
+            LEFT JOIN sensors s ON l.timestamp = s.timestamp
+            WHERE l.timestamp >= ?`,
+      [timestamp]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Data not found",
+      });
+    }
+
+    res.json({
+      ...rows[0],
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// body: {
+//   text: "string";
+// }
+app.post("/api/v1/speech", async (req, res) => {
+  const { text } = req.body;
+  try {
+    const { message, metadata } = req.body;
+
+    if (!message) {
+      return res.status(400).json({
+        success: false,
+        error: "Message is required",
+      });
+    }
+
+    const clientCount = wsServer.broadcastTextMessage(message, metadata || {});
+
+    res.json({
+      success: true,
+      message: "Message broadcasted",
+      clientCount,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+    });
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`✓ Server running on http://localhost:${PORT}`);
+});
