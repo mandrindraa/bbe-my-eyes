@@ -148,33 +148,14 @@ export async function queryPairedData(limit = 10) {
           : null;
 
       pairedData.push({
-        location: finalLocation
-          ? {
-              id: finalLocation.id,
-              longitude: parseFloat(finalLocation.longitude),
-              latitude: parseFloat(finalLocation.latitude),
-              adresse: finalLocation.adresse,
-              timestamp: parseInt(finalLocation.timestamp),
-            }
-          : null,
-        sensor: finalSensor
-          ? {
-              id: finalSensor.id,
-              step: finalSensor.step,
-              calories: finalSensor.calories,
-              velocity: finalSensor.velocity,
-              temperature: finalSensor.temperature,
-              timestamp: parseInt(finalSensor.timestamp),
-            }
-          : null,
-        timeDiff: timeDiff,
-        idsMatch:
-          finalLocation && finalSensor && finalLocation.id === finalSensor.id,
-        isReused: location !== finalLocation || sensor !== finalSensor,
-        combinedTimestamp: Math.max(
-          finalLocation?.timestamp || 0,
-          finalSensor?.timestamp || 0
-        ),
+        steps: finalSensor.step,
+        calories: finalSensor.calories,
+        speed: finalSensor.velocity,
+        temperature: finalSensor.temperature,
+        longitude: finalLocation.longitude,
+        latitude: finalLocation.latitude,
+        adresse: finalLocation.adresse,
+        timestamp: Math.max(finalLocation.timestamp, finalSensor.timestamp),
       });
     }
 
