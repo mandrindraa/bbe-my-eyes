@@ -15,9 +15,6 @@ const pool = new Pool({
   ssl: true,
 });
 
-// Get promise-based connection
-// const promisePool = pool.promise();
-
 // Test connection
 pool.connect((err) => {
   if (err) {
@@ -27,33 +24,17 @@ pool.connect((err) => {
   console.log("✓ Database connected successfully");
 });
 
-export async function queryLatestData() {
-  const rows = await pool.query(
-    `SELECT 
-                l.longitude, l.latitude, l.adresse, l.timestamp,
-                s.step as steps, s.calories, s.velocity as speed, s.temperature
-            FROM locations l
-            JOIN sensors s ON l.id = s.id
-            WHERE l.timestamp <= $1 ORDER BY s.id DESC`,
-    [Date.now()]
-  );
-  console.log(rows.rows);
-  return rows.rows;
-}
-
-// function query() {
-//   async (text, params) => {
-//     const start = Date.now();
-//     try {
-//       const res = await pool.query(text, params);
-//       const duration = Date.now() - start;
-//       console.log("Executed query", { text, duration, rows: res.rowCount });
-//       return res;
-//     } catch (error) {
-//       console.error("Database query error:", error);
-//       throw error;
-//     }
-//   };
+// export async function queryLatestData() {
+//   const rows = await pool.query(
+//     `SELECT
+//                 l.longitude, l.latitude, l.adresse, l.timestamp,
+//                 s.step as steps, s.calories, s.velocity as speed, s.temperature
+//             FROM locations l
+//             JOIN sensors s ON l.id = s.id
+//             WHERE l.timestamp <= $1 ORDER BY s.id DESC`,
+//     [Date.now()]
+//   );
+//   return rows.rows;
 // }
 
 export default pool;
