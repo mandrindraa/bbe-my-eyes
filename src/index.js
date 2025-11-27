@@ -190,8 +190,6 @@ app.get("/api/v1/data", async (req, res) => {
       [timestamp]
     );
 
-    console.log(rows.rows);
-
     res.json([...rows.rows]);
   } catch (error) {
     console.error(error);
