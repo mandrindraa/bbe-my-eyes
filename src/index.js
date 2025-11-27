@@ -102,7 +102,7 @@ app.post("/api/v1/locations", async (req, res) => {
 
     await db.query(
       "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES ($1, $2, $3, $4)",
-      [long, lat, addr, timestamp]
+      [long, lat, addr.formattedAddress, timestamp]
     );
 
     const latestData = await queryLatestData();
