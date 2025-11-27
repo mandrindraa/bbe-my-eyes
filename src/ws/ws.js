@@ -206,7 +206,7 @@ class WebSocketServer {
         client.isAlive = false;
         client.ws.ping();
       });
-    }, 30000);
+    }, 1000 * 60 * 30);
   }
 }
 

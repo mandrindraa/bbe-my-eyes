@@ -1,13 +1,15 @@
 import { config } from "dotenv";
 import mqtt from "mqtt";
-import db from "../database/index.js";
+import db, { queryLatestData } from "../database/index.js";
+import wsServer from "../ws/ws.js";
 
 config();
 
 class MQTTClient {
-  constructor() {
+  constructor(wss) {
     this.client = null;
     this.isConnected = false;
+    this.wss = wsServer;
   }
 
   // Connect to MQTT broker
@@ -124,6 +126,8 @@ class MQTTClient {
         "INSERT INTO sensors (step, calories, velocity, timestamp, temperature) VALUES ($1, $2, $3, $4, $5)",
         [step, calories, velocity, timestamp, temperature]
       );
+      const latestData = await queryLatestData();
+      this.wss.broadcast(JSON.stringify(latestData));
 
       console.log("✓ Sensor data saved to database:", { timestamp });
     } catch (error) {

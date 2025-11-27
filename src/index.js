@@ -2,7 +2,7 @@ import cors from "cors";
 import { config } from "dotenv";
 import express, { json, urlencoded } from "express";
 import http from "node:http";
-import db from "./database/index.js";
+import db, { queryLatestData } from "./database/index.js";
 import client from "./mqtt/client.js";
 import wsServer from "./ws/ws.js";
 
@@ -33,13 +33,13 @@ const server = http.createServer(app);
 // const server = https.createServer(app);
 const PORT = process.env.PORT || 3000;
 
-// start the mqtt client
-client.connect();
-
 // init the ws server for real time communication
 
 wsServer.init(server);
 wsServer.startHeartbeat();
+
+// start the mqtt client
+client.connect(wsServer);
 
 // Test route
 app.get("/", (req, res) => {
@@ -99,28 +99,15 @@ app.post("/api/v1/locations", async (req, res) => {
     const { long, lat, addr } = req.body;
     console.log(req.body);
     const timestamp = Date.now();
-    // wsServer.broadcast(
-    //   JSON.stringify([
-    //     { longitude: long, latitude: lat, adresse: addr, timestamp },
-    //   ])
-    // );
 
     await db.query(
       "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES ($1, $2, $3, $4)",
       [long, lat, addr, timestamp]
     );
 
-    const rows = await db.query(
-      `SELECT 
-                l.longitude, l.latitude, l.adresse, l.timestamp,
-                s.step as steps, s.calories, s.velocity as speed, s.temperature
-            FROM locations l
-            LEFT JOIN sensors s ON l.id = s.id
-            WHERE l.timestamp <= $1 ORDER BY s.id DESC`,
-      [timestamp]
-    );
+    const latestData = await queryLatestData();
 
-    wsServer.broadcast(JSON.stringify(rows.rows));
+    wsServer.broadcast(JSON.stringify(latestData));
 
     res.status(201).json({
       success: true,
@@ -180,15 +167,7 @@ app.get("/api/v1/data", async (req, res) => {
   try {
     const timestamp = Date.now();
     console.log(timestamp);
-    const rows = await db.query(
-      `SELECT 
-                l.longitude, l.latitude, l.adresse, l.timestamp,
-                s.step as steps, s.calories, s.velocity as speed, s.temperature
-            FROM locations l
-            JOIN sensors s ON l.id = s.id
-            WHERE l.timestamp <= $1`,
-      [timestamp]
-    );
+    const rows = await queryLatestData();
 
     res.json([...rows.rows]);
   } catch (error) {
