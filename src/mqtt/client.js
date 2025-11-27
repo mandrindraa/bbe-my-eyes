@@ -1,6 +1,6 @@
 import { config } from "dotenv";
 import mqtt from "mqtt";
-import db from "../database/queries.js";
+import db from "../database/index.js";
 import wsServer from "../ws/socketIOServer.js";
 
 config();
