@@ -171,12 +171,13 @@ app.get("/api/v1/data", async (req, res) => {
                 l.longitude, l.latitude, l.adresse, l.timestamp,
                 s.step, s.calories, s.velocity, s.temperature
             FROM locations l
-            LEFT JOIN sensors s ON l.timestamp = s.timestamp
+            LEFT JOIN sensors s ON l.id = s.id
             WHERE l.timestamp >= $1`,
       [timestamp]
     );
+    console.log(rows.rows);
 
-    if (rows.length === 0) {
+    if (rows.rowCount === 0) {
       return res.status(404).json({
         success: false,
         message: "Data not found",
@@ -184,7 +185,7 @@ app.get("/api/v1/data", async (req, res) => {
     }
 
     res.json({
-      ...rows,
+      ...rows.rows,
     });
   } catch (error) {
     console.error(error);
