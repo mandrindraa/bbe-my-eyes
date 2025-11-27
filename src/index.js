@@ -21,8 +21,12 @@ app.use(cors());
 
 // ping the system to prevent sleep on render
 setInterval(async () => {
-  await ping.promise.probe("bbe-my-eyes.onrender.com");
-  console.log("Ping completed");
+  try {
+    await ping.promise.probe("https://bbe-my-eyes.onrender.com");
+    console.log("Ping completed");
+  } catch (err) {
+    console.error("Ping error", err);
+  }
 }, 40 * 1000);
 
 const server = http.createServer(app);
