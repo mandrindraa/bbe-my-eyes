@@ -98,7 +98,7 @@ class MQTTClient {
         return;
       }
 
-      const [result] = await db.query(
+      await db.query(
         "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES ($1, $2, $3, $4)",
         [longitude, latitude, adresse, timestamp]
       );
@@ -120,7 +120,7 @@ class MQTTClient {
         return;
       }
 
-      const [result] = await db.query(
+      await db.query(
         "INSERT INTO sensors (step, calories, velocity, timestamp, temperature) VALUES ($1, $2, $3, $4, $5)",
         [step, calories, velocity, timestamp, temperature]
       );
