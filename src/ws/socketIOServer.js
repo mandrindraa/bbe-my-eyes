@@ -31,9 +31,8 @@ class SocketIOServer {
    */
   handleConnection(socket) {
     const clientId = socket.id;
-    const clientIp = socket.handshake.address; // Obtient l'adresse IP
+    const clientIp = socket.handshake.address;
 
-    // Stockage des métadonnées si nécessaire (remplace la Map clients manuelle)
     this.clientsMetadata.set(clientId, {
       ip: clientIp,
       connectedAt: new Date(),
@@ -118,10 +117,9 @@ class SocketIOServer {
   }
 
   async broadcastLocationUpdate(locationData, excludeId = null) {
-    const latestData = await queryLatestData();
     return this.broadcast(
       "location_update",
-      JSON.stringify(latestData),
+      JSON.stringify([{ ...locationData, timestamp: Date.now() }]),
       excludeId
     );
   }
@@ -129,23 +127,7 @@ class SocketIOServer {
   broadcastSensorUpdate(sensorData, excludeId = null) {
     return this.broadcast(
       "sensor_update",
-      { data: sensorData, timestamp: Date.now() },
-      excludeId
-    );
-  }
-
-  broadcastTextMessage(text, metadata = {}, excludeId = null) {
-    return this.broadcast(
-      "text_message",
-      { message: text, metadata: metadata, timestamp: Date.now() },
-      excludeId
-    );
-  }
-
-  broadcastNotification(title, body, data = {}, excludeId = null) {
-    return this.broadcast(
-      "notification",
-      { notification: { title, body, data }, timestamp: Date.now() },
+      JSON.stringify([{ ...sensorData, timestamp: Date.now() }]),
       excludeId
     );
   }
