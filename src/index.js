@@ -1,6 +1,6 @@
 import cors from "cors";
 import { config } from "dotenv";
-import express from "express";
+import express, { json, urlencoded } from "express";
 import http from "node:http";
 import ping from "ping";
 import db from "./database/index.js";
@@ -15,8 +15,8 @@ const app = express();
 // const credentials = { key: privateKey, cert: certificate };
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(json());
+app.use(urlencoded({ extended: true }));
 app.use(cors());
 
 // ping the system to prevent sleep on render
@@ -99,7 +99,7 @@ app.post("/api/v1/locations", async (req, res) => {
       JSON.stringify([{ longitude, latitude, adresse, timestamp }])
     );
 
-    const [result] = await db.query(
+    await db.query(
       "INSERT INTO locations (longitude, latitude, adresse, timestamp) VALUES ($1, $2, $3, $4)",
       [longitude, latitude, adresse, timestamp]
     );
@@ -160,7 +160,7 @@ app.post("/api/v1/locations", async (req, res) => {
 app.get("/api/v1/data", async (req, res) => {
   try {
     const timestamp = Date.now() - 1000000;
-    const [rows] = await db.query(
+    const rows = await db.query(
       `SELECT 
                 l.longitude, l.latitude, l.adresse, l.timestamp,
                 s.step, s.calories, s.velocity, s.temperature
@@ -178,7 +178,7 @@ app.get("/api/v1/data", async (req, res) => {
     }
 
     res.json({
-      ...rows[0],
+      ...rows,
     });
   } catch (error) {
     res.status(500).json({
