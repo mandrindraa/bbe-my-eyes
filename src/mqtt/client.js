@@ -1,11 +1,12 @@
 import { config } from "dotenv";
 import mqtt from "mqtt";
 import db from "../database/index.js";
+import wsServer from "../ws/socketIOServer.js";
 
 config();
 
 class MQTTClient {
-  constructor(wsServer) {
+  constructor() {
     this.client = null;
     this.isConnected = false;
     this.wss = wsServer;
@@ -58,7 +59,8 @@ class MQTTClient {
   subscribeToTopics() {
     const topics = [
       process.env.MQTT_TOPIC_LOCATIONS,
-      process.env.MQTT_TOPIC_SENSORS,
+      // process.env.MQTT_TOPIC_SENSORS,
+      process.env.MQTT_TOPIC_CAMERA,
     ];
 
     topics.forEach((topic) => {
@@ -80,8 +82,12 @@ class MQTTClient {
 
       if (topic === process.env.MQTT_TOPIC_LOCATIONS) {
         await this.saveLocation(data);
-      } else if (topic === process.env.MQTT_TOPIC_SENSORS) {
-        await this.saveSensor(data);
+      }
+      // else if (topic === process.env.MQTT_TOPIC_SENSORS) {
+      //   await this.saveSensor(data);
+      // }
+      else if (topic === process.env.MQTT_TOPIC_CAMERA) {
+        this.wss.broadcastImageData(data);
       }
     } catch (error) {
       console.error("Error handling MQTT message:", error.message);
@@ -91,6 +97,7 @@ class MQTTClient {
   // Save location data to database
   async saveLocation(data) {
     try {
+      broadcastCameraImage;
       const { longitude, latitude, adresse, timestamp } = data;
 
       // Validate required fields

@@ -23,7 +23,7 @@ const PORT = process.env.PORT || 3000;
 wsServer.init(server);
 
 // start the mqtt client
-client.connect(wsServer);
+client.connect();
 
 // Test route
 app.get("/", (req, res) => {

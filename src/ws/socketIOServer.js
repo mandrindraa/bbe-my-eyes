@@ -132,6 +132,18 @@ class SocketIOServer {
     );
   }
 
+  broadcastImageData(imageData, excludeId = null) {
+    const message = (() => {
+      if(!imageData.obstacle) return ""
+      return `Attention! Obstacle détecter ${imageData.direction} à ${imageData.distance} mètres.`
+    })()
+    return this.broadcast(
+      "update_camera",
+      JSON.stringify({ timestamp: Date.now(), message }),
+      excludeId
+    );
+  }
+
   getClients() {
     const clientList = [];
     // io.sockets.sockets est une Map de tous les sockets connectés
