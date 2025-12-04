@@ -99,10 +99,7 @@ app.post("/api/v1/steps", async (req,res) => {
 
 
   //  wsServer.broadcastStepUpdate(req.body);
-     res.status(201).json({
-      success: true,
-      data: { timestamp },
-    });
+     res.status(201).json({});
   } catch (error) {
     console.error(error);
     res.status(500).json({
