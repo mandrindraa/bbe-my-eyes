@@ -89,7 +89,7 @@ app.post("/api/v1/steps", async (req,res) => {
     
      await db.query(
       "INSERT INTO sensors (step, calories, velocity) VALUES ($1, $2, $3)",
-      [step, speed, calories]
+      [step, calories, speed]
     );
 
   const data = queryPairedData();
