@@ -153,7 +153,7 @@ class SocketIOServer {
   }  
 
   async broadcastDataUpdate(data) {
-     return this.brodcast("update:data", JSON.stringify(data));
+     return this.broadcast("update:data", JSON.stringify(data));
   }
 
   getClients() {
