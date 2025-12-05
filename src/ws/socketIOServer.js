@@ -5,6 +5,13 @@ class SocketIOServer {
   constructor() {
     this.io = null;
     this.clientsMetadata = new Map();
+    
+    // Système de throttling pour les messages caméra
+    this.lastCameraBroadcast = 0;
+    this.cameraThrottleDelay = 10000; // 10 secondes entre chaque message caméra
+    this.pendingCameraMessage = null;
+    this.cameraMessageQueue = []; // File d'attente des messages caméra
+    this.maxCameraQueueSize = 1; // Garde seulement le dernier message
   }
 
   /**
@@ -43,23 +50,18 @@ class SocketIOServer {
     console.log(`   - IP: ${clientIp}`);
     console.log(`   - Total clients: ${this.io.engine.clientsCount}\n`);
 
-    // L'ancien "handleMessage" qui faisait un ECHO de tout message reçu
     socket.on("client_message", (message) => {
       this.handleClientMessage(socket, message);
     });
 
-    // Si le client envoie un message pour une mise à jour de localisation
     socket.on("update_location", (locationData) => {
-      // Traitement de la donnée et diffusion aux autres si nécessaire
       this.broadcastLocationUpdate(locationData, socket.id);
     });
 
-    // L'ancien ws.on("close", ...)
     socket.on("disconnect", (reason) => {
       this.handleDisconnection(socket.id, reason);
     });
 
-    // L'ancien ws.on("error", ...)
     socket.on("error", (error) => {
       console.error(
         `✗ Socket.IO Error for client ${socket.id}:`,
@@ -74,8 +76,6 @@ class SocketIOServer {
   handleClientMessage(socket, message) {
     console.log(`📨 Message from client ${socket.id}:`, message);
 
-    // 1. Remplacement de l'envoi de "type: echo"
-    // Socket.IO gère le JSON pour vous.
     socket.emit("echo", {
       message: "Message received",
       originalMessage: message,
@@ -94,7 +94,6 @@ class SocketIOServer {
 
   /**
    * Envoi un message à tous les clients connectés, ou exclut un client spécifique.
-   * Remplacement de la méthode broadcast() manuelle.
    * @param {string} eventName Le nom de l'événement à émettre.
    * @param {*} data Les données à envoyer.
    * @param {string} excludeClientId L'ID du client à exclure (facultatif).
@@ -102,7 +101,6 @@ class SocketIOServer {
   broadcast(eventName, data, excludeClientId = null) {
     let emitter = this.io;
 
-    // Si un client doit être exclu, on utilise la méthode 'except'
     if (excludeClientId) {
       emitter = emitter.except(excludeClientId);
     }
@@ -132,33 +130,96 @@ class SocketIOServer {
     );
   }
 
+  /**
+   * Diffuse les données d'image avec un système de throttling intelligent
+   * pour éviter de saturer le canal TTS avec trop de messages caméra
+   */
   broadcastImageData(imageData, excludeId = null) {
-    const message = (() => {
-      if(!imageData.obstacle) return ""
-      return `Attention! Obstacle détecter ${imageData.direction} à ${imageData.distance} mètres.`
-    })()
-    return setTimeout(() => {this.broadcast(
-      "update_camera",
-      JSON.stringify({ timestamp: Date.now(), message }),
-      excludeId)
-    }, 7000);
+    // Ne rien faire s'il n'y a pas d'obstacle
+    if (!imageData.obstacle) {
+      console.log("📸 Camera message ignored (no obstacle)");
+      return;
+    }
+
+    const now = Date.now();
+    const timeSinceLastBroadcast = now - this.lastCameraBroadcast;
+
+    const message = `Attention! Obstacle détecté ${imageData.direction} à ${imageData.distance} mètres.`;
+
+    // Si assez de temps s'est écoulé depuis le dernier message
+    if (timeSinceLastBroadcast >= this.cameraThrottleDelay) {
+      // Envoyer immédiatement
+      this.sendCameraMessage(message, excludeId);
+    } else {
+      // Ajouter à la file d'attente (garde seulement le dernier)
+      this.cameraMessageQueue = [{ message, excludeId, imageData }];
+      
+      // Planifier l'envoi si pas déjà planifié
+      if (!this.pendingCameraMessage) {
+        const remainingTime = this.cameraThrottleDelay - timeSinceLastBroadcast;
+        
+        this.pendingCameraMessage = setTimeout(() => {
+          this.processCameraQueue();
+        }, remainingTime);
+
+        console.log(`📸 Camera message queued (waiting ${Math.round(remainingTime / 1000)}s)`);
+      } else {
+        console.log(`📸 Camera message replaced in queue (only latest kept)`);
+      }
+    }
   }
-    
-  broadcastStepUpdate (stepData, excludeId = null) {
-    return this.broadcast(
-      "update_steps",
-      JSON.stringify({ timestamp: Date.now(),...stepData}),
+
+  /**
+   * Envoie un message caméra et met à jour le timestamp
+   */
+  sendCameraMessage(message, excludeId = null) {
+    this.lastCameraBroadcast = Date.now();
+    this.broadcast(
+      "update_camera",
+      JSON.stringify({ 
+        timestamp: this.lastCameraBroadcast, 
+        message,
+        priority: "low" // Indique au frontend que c'est une priorité basse pour le TTS
+      }),
       excludeId
     );
-  }  
+    console.log("📸 Camera message sent:", message);
+  }
+
+  /**
+   * Traite la file d'attente des messages caméra
+   */
+  processCameraQueue() {
+    if (this.cameraMessageQueue.length > 0) {
+      // Prendre seulement le dernier message de la file
+      const { message, excludeId } = this.cameraMessageQueue[this.cameraMessageQueue.length - 1];
+      this.cameraMessageQueue = [];
+      this.sendCameraMessage(message, excludeId);
+    }
+    this.pendingCameraMessage = null;
+  }
+
+  broadcastStepUpdate(stepData, excludeId = null) {
+    return this.broadcast(
+      "update_steps",
+      JSON.stringify({ 
+        timestamp: Date.now(), 
+        ...stepData,
+        priority: "medium" // Priorité moyenne pour les étapes
+      }),
+      excludeId
+    );
+  }
 
   async broadcastDataUpdate(data) {
-     return this.broadcast("update:data", JSON.stringify(data));
+    return this.broadcast("update:data", JSON.stringify({
+      ...data,
+      priority: "high" // Priorité haute pour les données importantes
+    }));
   }
 
   getClients() {
     const clientList = [];
-    // io.sockets.sockets est une Map de tous les sockets connectés
     this.io.sockets.sockets.forEach((socket, clientId) => {
       const metadata = this.clientsMetadata.get(clientId) || {};
       clientList.push({
@@ -173,6 +234,27 @@ class SocketIOServer {
 
   getClientCount() {
     return this.io.engine.clientsCount;
+  }
+
+  /**
+   * Permet de modifier le délai de throttling pour les messages caméra
+   * @param {number} delayMs Délai en millisecondes (recommandé: 8000-15000)
+   */
+  setCameraThrottleDelay(delayMs) {
+    this.cameraThrottleDelay = delayMs;
+    console.log(`📸 Camera throttle delay set to ${delayMs}ms (${delayMs / 1000}s)`);
+  }
+
+  /**
+   * Nettoie les messages caméra en attente (utile en cas de déconnexion)
+   */
+  clearCameraQueue() {
+    if (this.pendingCameraMessage) {
+      clearTimeout(this.pendingCameraMessage);
+      this.pendingCameraMessage = null;
+    }
+    this.cameraMessageQueue = [];
+    console.log("📸 Camera queue cleared");
   }
 }
 
