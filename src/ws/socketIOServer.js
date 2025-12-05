@@ -137,11 +137,11 @@ class SocketIOServer {
       if(!imageData.obstacle) return ""
       return `Attention! Obstacle détecter ${imageData.direction} à ${imageData.distance} mètres.`
     })()
-    return this.broadcast(
+    return setTimeout(() => {this.broadcast(
       "update_camera",
       JSON.stringify({ timestamp: Date.now(), message }),
-      excludeId
-    );
+      excludeId)
+    }, 7000);
   }
     
   broadcastStepUpdate (stepData, excludeId = null) {
